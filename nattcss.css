@@ -1,0 +1,18 @@
+body {
+	font-family: "Arial", Serif;
+	color: #555;
+	text-align: center;
+	background-color: #ddd;
+}
+
+h1 {
+	text-align: center;
+}
+
+.canvas-container {
+	margin: 10 auto;
+}
+
+canvas {
+	border: 1px solid #555;
+}
