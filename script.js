@@ -119,12 +119,10 @@ function button() {
 	var solution = [];
 	for (var channel = 0; channel < 3; channel++) {
 		var equation = matrixBuilder(indexMapPlus, orangeData, appleData, channel);
-		solution[channel] = conjGradSolver(equation.A, equation.b, equation.sol);
+		solution[channel] = sorSolver(equation.A, equation.b, 1.9, equation.sol);
 	}
 	
 	// Convert the solution into imageData.
-	console.log(indexMap);
-	console.log(canvasSec);
 	ctxSec.clearRect(0, 0, canvasSec.width, canvasSec.height);
 	var solutionData = ctxSec.getImageData(0, 0, canvasSec.width, canvasSec.height);
 	var dataI = 0;
@@ -212,7 +210,7 @@ function matrixBuilder(indexMapPlus, orangeData, appleData, colorChannel) {
 				neiCount++;
 				writeIndex++;
 				A.set(pixIndex, writeIndex, neiIndex);
-				b[pixIndex] += neiColor - pixColor;
+				b[pixIndex] -= neiColor - pixColor;
 			}
 			A.set(pixIndex, 0, neiCount);
 			// Fill in the remaining spot of A with -1.
@@ -228,6 +226,25 @@ function matrixBuilder(indexMapPlus, orangeData, appleData, colorChannel) {
 		b : b,
 		sol : initialSol
 	};
+}
+
+function sorSolver(A, b, omega, initialSol) {
+	var sol = initialSol.slice(),
+		count = 0;
+	while (count < 1000) {
+		for (var i = 0, lenI = b.length; i < lenI; i++) {
+			var sigma = 0;
+			// Sigma += dot product of ith row of A and solution vector
+			for (var j = 1; j < 5; j++) {
+				var entryA = A.get(i, j);
+				if (entryA == -1) break;
+				sigma -= sol[entryA];
+			}
+			sol[i] += omega * ((b[i] - sigma) / A.get(i, 0) - sol[i]);
+		}
+		count++;
+	}
+	return sol;
 }
 
 function conjGradSolver(A, b, initialSol) {
