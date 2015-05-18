@@ -52,6 +52,7 @@ function button() {
 	// Get the imageData of the orange.
 	var ctx = canvas.getContext('2d');
 	canvas.remove(apple);
+	canvas.deactivateAll().renderAll(); // Removes the image controller before saving the image.
 	var orangeData = ctx.getImageData(boundingBox.left, boundingBox.top, boundingBox.width, boundingBox.height);
 	canvas.add(apple);
 	
