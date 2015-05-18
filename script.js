@@ -42,27 +42,21 @@ function button() {
 		obj.selectable = false;
 	});
 	
-	// Create a secondary canvas.
+	// Create a bounding box.
 	boundingBox = orange.getBoundingRect();
-	var canvasSec = fabric.util.createCanvasElement();
-	canvasSec.width = boundingBox.width;
-	canvasSec.height = boundingBox.height;
+	boundingBox.left = Math.floor(boundingBox.left);
+	boundingBox.top = Math.floor(boundingBox.top);
+	boundingBox.width = Math.ceil(boundingBox.width);
+	boundingBox.height = Math.ceil(boundingBox.height);
 	
-	// Get canvas context.
-	var ctxSec = canvasSec.getContext('2d');
-	
-	// Get the orange onto the secondary canvas.
-	orange.left -= boundingBox.left;
-	orange.top -= boundingBox.top;
-	orange.render(ctxSec, false);
-	orange.left += boundingBox.left;
-	orange.top += boundingBox.top;
-	
-	// Get the imageData of the canvas.
-	var orangeData = ctxSec.getImageData(0, 0, canvasSec.width, canvasSec.height);
+	// Get the imageData of the orange.
+	var ctx = canvas.getContext('2d');
+	canvas.remove(apple);
+	var orangeData = ctx.getImageData(boundingBox.left, boundingBox.top, boundingBox.width, boundingBox.height);
+	canvas.add(apple);
 	
 	// Fill in the values of the indexMap by processing the imageData.
-	var indexMap = new Int32Array2D(canvasSec.height, canvasSec.width);
+	var indexMap = new Int32Array2D(orangeData.height, orangeData.width);
 	// Iterate through each pixel.
 	var count = 0,
 		i = 0;
@@ -100,16 +94,10 @@ function button() {
 		}
 	}
 	
-	// Get the apple onto the secondary canvas.
-	ctxSec.clearRect(0, 0, canvasSec.width, canvasSec.height);
-	apple.left -= boundingBox.left;
-	apple.top -= boundingBox.top;
-	apple.render(ctxSec, false);
-	apple.left += boundingBox.left;
-	apple.top += boundingBox.top;
-	
 	// Get the imageData of the apple.
-	var appleData = ctxSec.getImageData(0, 0, canvasSec.width, canvasSec.height);
+	canvas.remove(orange);
+	var appleData = ctx.getImageData(boundingBox.left, boundingBox.top, boundingBox.width, boundingBox.height);
+	canvas.add(orange);
 	
 	// Build the matrix & solve the equations.
 	var indexMapPlus = {
@@ -122,30 +110,23 @@ function button() {
 		solution[channel] = sorSolver(equation.A, equation.b, 1.9, equation.sol);
 	}
 	
-	// Convert the solution into imageData.
-	ctxSec.clearRect(0, 0, canvasSec.width, canvasSec.height);
-	var solutionData = ctxSec.getImageData(0, 0, canvasSec.width, canvasSec.height);
+	// Convert the solution into imageData.  Paint the solution on top of the apple.
+	var solutionData = ctx.createImageData(appleData.width, appleData.height);
+	solutionData.data.set(appleData.data);
 	var dataI = 0;
-	for (var y = 0, lenY = canvasSec.height; y < lenY; y++) {
-		for (var x = 0, lenX = canvasSec.width; x < lenX; x++, dataI += 4) {
+	for (var y = 0, lenY = appleData.height; y < lenY; y++) {
+		for (var x = 0, lenX = appleData.width; x < lenX; x++, dataI += 4) {
 			var solI = indexMap.get(x, y);
-			if (solI < 0) { // If the current pixel is not included in the solution vector.
-				// Use the background pixel color.
-				for (var c = 0; c < 4; c++) {
-					solutionData.data[dataI + c] = appleData.data[dataI + c];
-				}
-			} else { // Otherwise, use the color in the solution vector.
+			if (solI >= 0) {
 				for (var c = 0; c < 3; c++) {
 					solutionData.data[dataI + c] = solution[c][solI];
 				}
-				solutionData.data[dataI + 3] = 255;
 			}
 		}
 	}
 
 	// Put the solution onto the main canvas.
 	canvas.remove(orange);
-	var ctx = canvas.getContext("2d");
 	ctx.putImageData(solutionData, boundingBox.left, boundingBox.top);
 	
 	// Debugging: display the intermediate data.
@@ -228,10 +209,17 @@ function matrixBuilder(indexMapPlus, orangeData, appleData, colorChannel) {
 	};
 }
 
+// This function solves Ax = b using the successive over relaxation method.
 function sorSolver(A, b, omega, initialSol) {
 	var sol = initialSol.slice(),
-		count = 0;
+		count = 0,
+		maxDelta = 0;
 	while (count < 1000) {
+		// Every 25 iterations, we check to see the biggest change made to
+		// the solution vector.  If the change isn't significant, the loop
+		// stops.
+		if (count % 10 == 0) maxDelta = 0;
+
 		for (var i = 0, lenI = b.length; i < lenI; i++) {
 			var sigma = 0;
 			// Sigma += dot product of ith row of A and solution vector
@@ -240,10 +228,16 @@ function sorSolver(A, b, omega, initialSol) {
 				if (entryA == -1) break;
 				sigma -= sol[entryA];
 			}
-			sol[i] += omega * ((b[i] - sigma) / A.get(i, 0) - sol[i]);
+			var delta = omega * ((b[i] - sigma) / A.get(i, 0) - sol[i])
+			sol[i] += delta;
+			if (count % 10 == 0 && delta > maxDelta) maxDelta = Math.abs(delta);
 		}
+
+		if (count % 10 == 0 && maxDelta < 10) break;
+
 		count++;
 	}
+	console.log(count);
 	return sol;
 }
 
