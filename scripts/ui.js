@@ -20,11 +20,32 @@ function PageFilePrompt(mode, overlayData) {
 		// Present the content.
 		$('#content').html(this.filedialog);
 
-		// Configure the event handlers.
+		// Event handler for clicking sample.
 		var curr = this;
 		$('#sample').click(function() {
 			curr.clickSample();
 		});
+
+		// Event handler for clicking file upload.
+		$('#upload').change(function(e){
+			var reader = new FileReader();
+			reader.onload = curr.uploadDone;
+			reader.readAsDataURL(e.target.files[0]);
+		});
+	}
+
+	// This method fires when the app finishes reading the file.
+	this.uploadDone = function(e) {
+		$('#filedialog').remove();
+		if (mode === 'background') {
+			srcToImageData(e.target.result, function(bgData){
+				var nextPage = new PagePoisson(overlayData, bgData);
+				nextPage.render();
+			});
+		} else {
+			var nextPage = new PageOverlayEdit(e.target.result);
+			nextPage.render();
+		}
 	}
 
 	// This method fires when the user click select sample images.
@@ -300,7 +321,7 @@ function PageOverlayEdit(overlaySrc) {
 function fileDialogBox(header) {
 	return $.parseHTML('<div id="filedialog">' +
 		header + '<br>' +
-		'<div class="btn">Use your own image</div>' + 
+		'<div class="btn"><input type="file" id="upload">Use your own image</div>' + 
 		'-OR-<br>' + 
 		'<div class="btn" id="sample">Select from sample images</div>' +
 		'</div>');
