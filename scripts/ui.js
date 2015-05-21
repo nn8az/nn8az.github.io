@@ -9,9 +9,9 @@ $(document).ready(function() {
 // A class that represents the main page.
 function PageFilePrompt(mode, overlayData) {
 	// The dialog box that prompts the user to select an overlay.
-	var header = '1. Select an overlay image.';
+	var header = '1. Select an <b style="color:#FF9933">overlay image</b>.';
 	if (mode === 'background') {
-		header = '3. Select a background image.';
+		header = '3. Select a <b style="color:#FF66CC">background image</b>.';
 	}
 	this.filedialog = fileDialogBox(header);
 

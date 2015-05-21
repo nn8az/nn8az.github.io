@@ -15,6 +15,7 @@ fabric.Image.fromImgData = function(imgData, callback) {
 // Image editing.
 function PagePoisson(overlayData, backgroundData) {
 
+	// Data members.
 	var contents = $.parseHTML(''+
 		'<div>4. Move, scale, rotate the overlay and click render when you are ready.</div>'
 		);
@@ -24,7 +25,23 @@ function PagePoisson(overlayData, backgroundData) {
 	canvas.height = 100;
 	canvas.id = 'myCanvas';
 
-	var uiBlocker = $('#block');
+	var processingScreen = $('#block');
+
+	var uiDisabler = $('#disabler');
+
+	var popup = $('#popup');
+	popup.slideIn = function() {
+		popup.show();
+		popup.css({bottom: -popup.outerHeight()});
+		popup.animate({bottom: 0});
+	}
+	popup.slideOut = function(callback) {
+		popup.animate({
+				bottom: -popup.outerHeight()
+			}, function(){
+				if (typeof callback !== 'undefined') callback();
+			});
+	}
 
 	var overlay = false;
 
@@ -37,7 +54,7 @@ function PagePoisson(overlayData, backgroundData) {
 		$('#content').append(contents);
 		$('#content').append(canvas);
 
-		// Use fabric.js to represent the canvas instead of DOM.
+		// Wrap the <canvas> with Fabric canvas object.
 		canvas = new fabric.Canvas('myCanvas', {selection: false});
 		canvas.setHeight(backgroundData.height);
 		canvas.setWidth(backgroundData.width);
@@ -46,19 +63,19 @@ function PagePoisson(overlayData, backgroundData) {
 		fabric.Image.fromImgData(backgroundData, function(dummy){
 			background = dummy;
 			background.set('selectable', false);
-			setupCanvas();
+			setupImages();
 		});
 
 		// Load the overlay image.
 		fabric.Image.fromImgData(overlayData, function(dummy){
 			overlay = dummy;
-			setupCanvas();
+			setupImages();
 		});
 	}
 
 	// This function sets up the canvas. The function will run its
 	// main subroutine only when both images are loaded.
-	function setupCanvas() {
+	function setupImages() {
 		// Return if both images are not loaded.
 		if (!overlay) return;
 		if (!background) return;
@@ -72,24 +89,29 @@ function PagePoisson(overlayData, backgroundData) {
 			overlay.width *= 0.8 / maxFactor;
 		}
 
+		initializeCanvas();
+	}
+
+	// This function restore the canvas and the page to the initial state.
+	function initializeCanvas() {
 		// Add both images onto the canvas
+		canvas.clear();
 		canvas.add(background);
 		canvas.add(overlay);
 
 		// Popup the render button
-		$('#popup').html('<div class="small-btn yes-btn" style="width: 100px">Render</div>');
-		$('#popup').show().css({bottom: -$('#popup').outerHeight()}).animate({bottom: 0});
+		popup.html('<div class="small-btn yes-btn" style="width: 100px">Render</div>');
+		popup.slideIn();
 		$('#popup div.yes-btn').click(function() {
-			uiBlocker.fadeIn(300, applyPoisson);
+			popup.slideOut();
+			processingScreen.fadeIn(300, applyPoisson);
 		});
 	}
 
+	// This function fires when the user clicks the 'Render' button. It calls the other
+	// function that contains the algorithm for Poisson Image Editing. Once the algorithm
+	// finishes, this function presents its output onto the canvas.
 	function applyPoisson() {
-		// Disable canvas selection.
-		canvas.forEachObject(function(obj) {
-			obj.selectable = false;
-		});
-		
 		// Create a bounding box.
 		boundingBox = overlay.getBoundingRect();
 		boundingBox.left = Math.floor(boundingBox.left);
@@ -137,10 +159,40 @@ function PagePoisson(overlayData, backgroundData) {
 
 		// Put the solution onto the main canvas.
 		canvas.remove(overlay);
+		uiDisabler.show();
 		ctx.putImageData(solutionData, boundingBox.left, boundingBox.top);
-		uiBlocker.hide();
+		processingScreen.hide();
+
+		// Prompt the user for what to do next (save or re-do).
+		popup.html('The image is ready! What would you like to do next?<br>' +
+		'<div class="small-btn yes-btn">Save</div><div class="small-btn no-btn">Reposition</div>' +
+		'<div class="small-btn blue-btn">Make more!</div>');
+		popup.slideIn();
+		$('#popup div.no-btn').click(function() {
+			uiDisabler.hide();
+			popup.slideOut(initializeCanvas);
+		});
+		$('#popup div.yes-btn').click(function() {
+			var domCanvas = document.getElementById('myCanvas');
+			window.open(domCanvas.toDataURL('image/png'));
+		})
+		$('#popup div.blue-btn').click(function() {
+			uiDisabler.hide();
+			restart();
+		})
 	}
 
+	function restart() {
+		$('#content').empty();
+		popup.slideOut(function() {
+			popup.empty();
+			var nextPage = new PageFilePrompt;
+			nextPage.render();
+		});
+	}
+
+	// Below are methods that are responsible for figuring out the imageData of the
+	// rendered image.
 	function setupMeta(overlayData) {
 		// Fill in the values of the indexMap by processing the imageData.
 		var indexMap = new Int32Array2D(overlayData.height, overlayData.width);

@@ -40,6 +40,17 @@
     padding-top: 30vh;
 }
 
+#disabler {
+    display: none;
+    z-index: 1;
+    background: rgba(0, 0, 0, 0);
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+
 #content {
     position: absolute;
     top: 75px;
@@ -68,9 +79,9 @@
     border-radius: 5px;
     background: #73C431;
     padding: 5px 10px 5px 10px;
-    -webkit-box-shadow: 0px 3px 0px 0px rgba(0, 0, 0, 0.2);
-    -moz-box-shadow:    0px 3px 0px 0px rgba(0, 0, 0, 0.2);
-    box-shadow:         0px 3px 0px 0px rgba(0, 0, 0, 0.2);
+    -webkit-box-shadow: 0px 3px 0px 0px #5C9D27;
+    -moz-box-shadow:    0px 3px 0px 0px #5C9D27;
+    box-shadow:         0px 3px 0px 0px #5C9D27;
     width: 80%;
     text-align: center;
     margin: auto;
@@ -80,11 +91,14 @@
 
 #filedialog .btn:hover {
     background: #89D749;
+    -webkit-box-shadow: 0px 3px 0px 0px #7DB152;
+    -moz-box-shadow:    0px 3px 0px 0px #7DB152;
+    box-shadow:         0px 3px 0px 0px #7DB152;
 }
 
 #filedialog .btn:active {
     position: relative;
-    bottom: -1px;
+    bottom: -2px;
 }
 
 #upload {
@@ -131,7 +145,7 @@
     padding: 5px 10px 5px 10px;
     text-align: center;
     line-height: 120%;
-    width: 50px;
+    width: 120px;
     margin: 10px;
 }
 
@@ -152,6 +166,9 @@
 
 .yes-btn:hover {
     background: #88D34B;
+    -webkit-box-shadow: 0px 3px 0px 0px #7DB152;
+    -moz-box-shadow:    0px 3px 0px 0px #7DB152;
+    box-shadow:         0px 3px 0px 0px #7DB152;
 }
 
 .no-btn {
@@ -163,6 +180,23 @@
 
 .no-btn:hover {
     background: #FB7E7E;
+    -webkit-box-shadow: 0px 3px 0px 0px #D66666;
+    -moz-box-shadow:    0px 3px 0px 0px #D66666;
+    box-shadow:         0px 3px 0px 0px #D66666;
+}
+
+.blue-btn {
+    background: #3399FF;
+    -webkit-box-shadow: 0px 3px 0px 0px #297ACC;
+    -moz-box-shadow:    0px 3px 0px 0px #297ACC;
+    box-shadow:         0px 3px 0px 0px #297ACC;
+}
+
+.blue-btn:hover {
+    background: #70B8FF;
+    -webkit-box-shadow: 0px 3px 0px 0px #5495D6;
+    -moz-box-shadow:    0px 3px 0px 0px #5495D6;
+    box-shadow:         0px 3px 0px 0px #5495D6;
 }
 
 .canvas-container {
