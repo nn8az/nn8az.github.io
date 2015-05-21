@@ -1,19 +1,22 @@
 <html>
 <head>
+	<link href='http://fonts.googleapis.com/css?family=Indie+Flower' rel='stylesheet' type='text/css'>
+	<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
 	<link href="style.css" rel="stylesheet">
-	<script src="script.js"></script>
-	<script src="fabric.js"></script>
+	<script src="scripts/fabric.js"></script>
+	<script src="scripts/jquery-1.11.3.min.js"></script>
+	<script src="scripts/ui.js"></script>
+	<script src="scripts/poisson.js"></script>
 </head>
 <body>
-	<h1>Poisson Image Editing</h1>
-	<h3>(Work in progress)</h3>
-	<canvas id="myCanvas">
-	Your browser does not support the HTML5 canvas tag.
-	</canvas>
-	<div>
-		<button type="button" onClick="button()">Render</button>
+	<div id="header">
+		Poisson Image Editor
 	</div>
-	<div id="debug">
+	<div id="content">
+		<div>2. Draw a region using your mouse.</div>
+		<canvas id="overlayCanvas" height="500" width="500"></canvas>
 	</div>
+	<div id="popup"></div>
+	<div id="block"><h1>Processing</h1><p>Please wait...</p></div>
 </body>
 </html>
