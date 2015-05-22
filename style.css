@@ -19,8 +19,8 @@
     position: fixed;
     width: 650px;
     left: 50%;
-    margin-left: -345px;
-    padding: 20px;
+    margin-left: -330px;
+    padding: 5px;
     bottom: 0px;
     background: #777;
     text-align: center;
@@ -146,7 +146,7 @@
     text-align: center;
     line-height: 120%;
     width: 120px;
-    margin: 10px;
+    margin: 5px;
 }
 
 .small-btn:active {
@@ -216,6 +216,7 @@ canvas {
     -webkit-box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.5);
     -moz-box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.5);
     box-shadow: 5px 5px 5px 0px rgba(0,0,0,0.5);
+    margin-bottom: 150px;
 }
 
 body {

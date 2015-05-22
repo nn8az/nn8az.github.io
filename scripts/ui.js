@@ -181,20 +181,30 @@ function PageOverlayEdit(overlaySrc) {
 		    ctx.closePath();
 		};
 		dm.mousedown = function(event) {
+			if (event.offsetX === undefined || event.offsetY === undefined) {
+				var canvasOffset = $(event.target).offset();
+				event.offsetX = event.pageX - canvasOffset.left;
+				event.offsetY = event.pageY - canvasOffset.top;
+			}
 			dm.helddown = true;
 			dm.prevX = dm.currX;
 			dm.prevY = dm.currY;
 			dm.currX = event.offsetX;
 			dm.currY = event.offsetY;
-			dm.points.push([event.offsetX, event.offsetY]);
+			dm.points.push([dm.currX, dm.currY]);
 		};
 		dm.mousemove = function(event) {
 			if (dm.helddown) {
+				if (event.offsetX === undefined || event.offsetY === undefined) {
+					var canvasOffset = $(event.target).offset();
+					event.offsetX = event.pageX - canvasOffset.left;
+					event.offsetY = event.pageY - canvasOffset.top;
+				}
 				dm.prevX = dm.currX;
 				dm.prevY = dm.currY;
-				dm.currX = event.offsetX;
-				dm.currY = event.offsetY;
-				dm.points.push([event.offsetX, event.offsetY]);
+				dm.currX = event.offsetX === undefined? event.layerX: event.offsetX;
+				dm.currY = event.offsetY === undefined? event.layerY: event.offsetY;
+				dm.points.push([dm.currX, dm.currY]);
 				dm.draw();
 			}
 		};
@@ -210,8 +220,18 @@ function PageOverlayEdit(overlaySrc) {
 			canvas.removeEventListener('mousedown', dm.mousedown);
 			canvas.removeEventListener('mousemove', dm.mousemove);
 			canvas.removeEventListener('mouseup', dm.mouseup);
+			// Blocks the screen with 'Processing, please wait...',
+			// then let the worker performs polygon hit test.
 			page.uiBlocker.fadeIn(300, function(){
-				page.drawingDone();
+				var worker = new Worker('scripts/point-contained.js');
+				worker.addEventListener('message', function(e) {
+					page.drawingDone(e.data);
+				});
+				worker.postMessage({
+					width: page.myCanvas.width,
+					height: page.myCanvas.height,
+					points: dm.points
+				});
 			});
 		};
 		canvas.addEventListener('mousedown', dm.mousedown);
@@ -219,60 +239,30 @@ function PageOverlayEdit(overlaySrc) {
 		canvas.addEventListener('mouseup', dm.mouseup);
 	};
 
-	// This method executes when the user has finished drawing a region.
-	this.drawingDone = function() {
-		// Draw sliced out image.
-		// Begin by redrawing the user's region on a secondary canvas.
-		var newCanvas = document.createElement('canvas');
-		newCanvas.width = this.myCanvas.width;
-		newCanvas.height = this.myCanvas.height;
-		var newCtx = newCanvas.getContext('2d');
-		var dm = this.myCanvas.drawModule;
-		newCtx.beginPath();
-		newCtx.fillStyle = 'red';
-		for (var i = 0, lenI = dm.points.length; i < lenI; i++) {
-			if (i == 0) {
-				newCtx.moveTo(dm.points[i][0], dm.points[i][1]);
-			} else {
-				newCtx.lineTo(dm.points[i][0], dm.points[i][1]);
-			}
-		}
-		newCtx.fill();
-		newCtx.closePath();
+	// This method executes when the worker finished with the polygon hit test.
+	this.drawingDone = function(workerOutput) {
+		// Retrieves the output from the worker.
+		var points = workerOutput.points,
+			xMin = workerOutput.xMin,
+			xMax = workerOutput.xMax,
+			yMin = workerOutput.yMin,
+			yMax = workerOutput.yMax;
 
 		// Redraw the main canvas to remove the drawn region.
 		var ctx = this.myCanvas.getContext('2d');
 		ctx.putImageData(this.overlayData, 0, 0);
 		var imgData = ctx.getImageData(0, 0, this.myCanvas.width, this.myCanvas.height);
-
-		// Iterate through each pixel on the secondary canvas to determine if
-		// it lies inside of the drawn region. If it does not, then remove the
-		// pixel from the main canvas. Also determine the bounding rectangle,
-		// while iterating.
-		var maxX = 0, maxY = 0, minX = imgData.width, minY = imgData.height;
-		var dataI = 3;
-		for (var y = 0, lenY = newCanvas.height; y < lenY; y++) {
-			for (var x = 0, lenX = newCanvas.width; x < lenX; x++, dataI += 4) {
-				if (!newCtx.isPointInPath(x, y)) {
-					imgData.data[dataI] = 0;
-				} else {
-					if (x < minX) {
-						minX = x;
-					}
-					if (x > maxX) {
-						maxX = x;
-					}
-					if (y < minY) {
-						minY = y;
-					}
-					if (y > maxY) {
-						maxY = y;
-					}
-				}
-			}
+		for (var i = 3, lenI = imgData.data.length; i < lenI; i += 4) {
+			imgData.data[i] = 0;
+		}
+		for (var i = 0, lenI = points.length; i < lenI; i++) {
+			var x = points[i][0];
+			var y = points[i][1];
+			var index = (y * imgData.width + x) * 4 + 3;
+			imgData.data[index] = 255;
 		}
 		ctx.putImageData(imgData, 0, 0);
-		var croppedData = ctx.getImageData(minX, minY, maxX-minX + 1, maxY-minY + 1);
+		var croppedData = ctx.getImageData(xMin, yMin, xMax-xMin + 1, yMax-yMin + 1);
 		this.uiBlocker.hide();
 
 		// Setup for the user prompt.
