@@ -1,4 +1,4 @@
-# Poisson Image Editing
+# Poisson Image Editor
 ## [View it online] (http://nn8az.github.io/)
 ![Image of the app](/readme/demo-small.png)
 
