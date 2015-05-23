@@ -26,7 +26,6 @@ function inRegionPoints(width, height, points) {
 	var output = {};
 	output.points = [];
 	for (var t = 0; t < tParam.length; t++) {
-		console.log(tParam[t]);
 		// Keep track of min-max statistics.
 		var xMin = width, xMax = 0,
 			yMin = height, yMax = 0;
@@ -57,8 +56,6 @@ function inRegionPoints(width, height, points) {
 				}
 			}
 		}
-
-		console.log(xMin, xMax, yMin, yMax);
 
 		// Use the min-max statistics of the current trial to determine
 		// the upper and lower bound for the next trial.

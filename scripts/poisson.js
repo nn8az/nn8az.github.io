@@ -43,6 +43,8 @@ function PagePoisson(overlayData, backgroundData) {
 			});
 	}
 
+	var metadata = false;
+
 	var overlay = false;
 
 	var background = false;
@@ -111,6 +113,7 @@ function PagePoisson(overlayData, backgroundData) {
 	// This function fires when the user clicks the 'Render' button. It calls the other
 	// function that contains the algorithm for Poisson Image Editing. Once the algorithm
 	// finishes, this function presents its output onto the canvas.
+	var solution = [false, false, false, false];
 	function applyPoisson() {
 		// Create a bounding box.
 		boundingBox = overlay.getBoundingRect();
@@ -132,17 +135,47 @@ function PagePoisson(overlayData, backgroundData) {
 		canvas.add(overlay);
 
 		// Setup the metadata.
-		var metadata = setupMeta(overlayData);
-		var indexMap = metadata.indexMap;
+		metadata = setupMeta(overlayData);
 
-		// Build the matrix & solve the equations.
+		// Build the matrix
 		var equation = matrixBuilder(metadata, overlayData, backgroundData);
-		var solution = [];
-		for (var c = 0; c < 3; c++) {
-			solution[c] = sorSolver(equation.A, equation.b[c], 1.9, equation.sol[c]);
+
+		// Create 4 different workers, each solves the equation for one color channel.
+		for (var c = 0; c < 4; c++) {
+			solution[c] = false;
+			var worker = new Worker('scripts/sor.js');
+			worker.addEventListener('message', function(e) {
+				storeSolution(e.data.sol, e.data.c);
+			});
+			worker.postMessage({
+				A: equation.A,
+				b: equation.b[c],
+				omega: 1.9,
+				initialSol: equation.initialGuess[c],
+				color: c
+			});
 		}
-		
+	}
+
+	// This callback function executes whenever the worker finished solving an equation.
+	// After all of the workers have solved their equation, the function calls displaySolution().
+	function storeSolution(sol, c) {
+		solution[c] = sol;
+		for (var i = 0; i < solution.length; i++) {
+			if (!solution[i]) return;
+		}
+		displaySolution();
+	}
+
+	// Display the solution and the pop-up prompt.
+	function displaySolution() {
+		// Get the background imageData within the bounding box.
+		var ctx = canvas.getContext('2d');
+		canvas.remove(overlay);
+		var backgroundData = ctx.getImageData(boundingBox.left, boundingBox.top, boundingBox.width, boundingBox.height);
+
 		// Convert the solution into imageData.  Paint the solution on top of the background.
+		var indexMap = metadata.indexMap;
 		var solutionData = ctx.createImageData(backgroundData.width, backgroundData.height);
 		solutionData.data.set(backgroundData.data);
 		var dataI = 0;
@@ -150,7 +183,7 @@ function PagePoisson(overlayData, backgroundData) {
 			for (var x = 0, lenX = backgroundData.width; x < lenX; x++, dataI += 4) {
 				var solI = indexMap.get(x, y);
 				if (solI >= 0) {
-					for (var c = 0; c < 3; c++) {
+					for (var c = 0; c < 4; c++) {
 						solutionData.data[dataI + c] = solution[c][solI];
 					}
 				}
@@ -246,14 +279,14 @@ function PagePoisson(overlayData, backgroundData) {
 		// Declare the matrix A, vector b, and the initial solution.
 		var A = new Int32Array2D(5, n),
 			b = [];
-		for (var i = 3; i--;) {
+		for (var i = 4; i--;) {
 			b[i] = [];
 			for (var j = n; j--;) {
 				b[i][j] = 0;
 			}
 		}
 		var initialSol = [];
-		for (var i = 3; i--;) {
+		for (var i = 4; i--;) {
 			initialSol[i] = [];
 		}
 		
@@ -271,7 +304,7 @@ function PagePoisson(overlayData, backgroundData) {
 				var neiCount = 0,
 					writeIndex = 0,
 					pixColor = [];
-					for (var c = 0; c < 3; c++) {
+					for (var c = 0; c < 4; c++) {
 						pixColor[c] = overlayData.data[dataI + c];
 					}
 
@@ -289,14 +322,14 @@ function PagePoisson(overlayData, backgroundData) {
 					// If the neighbor is a boundary pixel, add the background color value
 					// to b.
 					if (neiIndex == -1) {
-						for (var c = 0; c < 3; c++) {
+						for (var c = 0; c < 4; c++) {
 							b[c][pixIndex] += backgroundData.data[neiDataIndex + c];
 						}
 						neiCount++;
 						continue;
 					}
 					// Sets the row of A and b.
-					for (var c = 0; c < 3; c++) {
+					for (var c = 0; c < 4; c++) {
 						neiColor = overlayData.data[neiDataIndex + c];
 						b[c][pixIndex] += pixColor[c] - neiColor;
 					}
@@ -310,7 +343,7 @@ function PagePoisson(overlayData, backgroundData) {
 				for (var n = writeIndex + 1; n < 5; n++) {
 					A.set(pixIndex, n, -1);
 				}
-				for (var c = 0; c < 3; c++) {
+				for (var c = 0; c < 4; c++) {
 					initialSol[c][pixIndex] = backgroundData.data[dataI + c];
 				}
 			}
@@ -319,7 +352,7 @@ function PagePoisson(overlayData, backgroundData) {
 		return {
 			A : A,
 			b : b,
-			sol : initialSol
+			initialGuess : initialSol
 		};
 	}
 

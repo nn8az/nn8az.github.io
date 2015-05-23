@@ -1,11 +1,3 @@
-$(document).ready(function() {
-	// Construct an object to represent the main page.
-	var mainPage = new PageFilePrompt()
-
-	// Use the main page object.
-	mainPage.render();
-});
-
 // A class that represents the main page.
 function PageFilePrompt(mode, overlayData) {
 	// The dialog box that prompts the user to select an overlay.
