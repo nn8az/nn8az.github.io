@@ -113,7 +113,7 @@ function PagePoisson(overlayData, backgroundData) {
 	// This function fires when the user clicks the 'Render' button. It calls the other
 	// function that contains the algorithm for Poisson Image Editing. Once the algorithm
 	// finishes, this function presents its output onto the canvas.
-	var solution = [false, false, false, false];
+	var solution = [false, false, false];
 	function applyPoisson() {
 		// Create a bounding box.
 		boundingBox = overlay.getBoundingRect();
@@ -140,8 +140,8 @@ function PagePoisson(overlayData, backgroundData) {
 		// Build the matrix
 		var equation = matrixBuilder(metadata, overlayData, backgroundData);
 
-		// Create 4 different workers, each solves the equation for one color channel.
-		for (var c = 0; c < 4; c++) {
+		// Create 3 different workers, each solves the equation for one color channel.
+		for (var c = 0; c < 3; c++) {
 			solution[c] = false;
 			var worker = new Worker('scripts/sor.js');
 			worker.addEventListener('message', function(e) {
@@ -160,6 +160,7 @@ function PagePoisson(overlayData, backgroundData) {
 	// This callback function executes whenever the worker finished solving an equation.
 	// After all of the workers have solved their equation, the function calls displaySolution().
 	function storeSolution(sol, c) {
+		console.log('fired', solution.length);
 		solution[c] = sol;
 		for (var i = 0; i < solution.length; i++) {
 			if (!solution[i]) return;
@@ -183,7 +184,7 @@ function PagePoisson(overlayData, backgroundData) {
 			for (var x = 0, lenX = backgroundData.width; x < lenX; x++, dataI += 4) {
 				var solI = indexMap.get(x, y);
 				if (solI >= 0) {
-					for (var c = 0; c < 4; c++) {
+					for (var c = 0; c < 3; c++) {
 						solutionData.data[dataI + c] = solution[c][solI];
 					}
 				}
@@ -279,14 +280,14 @@ function PagePoisson(overlayData, backgroundData) {
 		// Declare the matrix A, vector b, and the initial solution.
 		var A = new Int32Array2D(5, n),
 			b = [];
-		for (var i = 4; i--;) {
+		for (var i = 3; i--;) {
 			b[i] = [];
 			for (var j = n; j--;) {
 				b[i][j] = 0;
 			}
 		}
 		var initialSol = [];
-		for (var i = 4; i--;) {
+		for (var i = 3; i--;) {
 			initialSol[i] = [];
 		}
 		
@@ -304,7 +305,7 @@ function PagePoisson(overlayData, backgroundData) {
 				var neiCount = 0,
 					writeIndex = 0,
 					pixColor = [];
-					for (var c = 0; c < 4; c++) {
+					for (var c = 0; c < 3; c++) {
 						pixColor[c] = overlayData.data[dataI + c];
 					}
 
@@ -322,14 +323,14 @@ function PagePoisson(overlayData, backgroundData) {
 					// If the neighbor is a boundary pixel, add the background color value
 					// to b.
 					if (neiIndex == -1) {
-						for (var c = 0; c < 4; c++) {
+						for (var c = 0; c < 3; c++) {
 							b[c][pixIndex] += backgroundData.data[neiDataIndex + c];
 						}
 						neiCount++;
 						continue;
 					}
 					// Sets the row of A and b.
-					for (var c = 0; c < 4; c++) {
+					for (var c = 0; c < 3; c++) {
 						neiColor = overlayData.data[neiDataIndex + c];
 						b[c][pixIndex] += pixColor[c] - neiColor;
 					}
@@ -343,7 +344,7 @@ function PagePoisson(overlayData, backgroundData) {
 				for (var n = writeIndex + 1; n < 5; n++) {
 					A.set(pixIndex, n, -1);
 				}
-				for (var c = 0; c < 4; c++) {
+				for (var c = 0; c < 3; c++) {
 					initialSol[c][pixIndex] = backgroundData.data[dataI + c];
 				}
 			}
@@ -354,36 +355,6 @@ function PagePoisson(overlayData, backgroundData) {
 			b : b,
 			initialGuess : initialSol
 		};
-	}
-
-	function sorSolver(A, b, omega, initialSol) {
-		var sol = initialSol.slice(),
-			count = 0,
-			maxDelta = 0;
-		while (count < 1000) {
-			// Every 25 iterations, we check to see the biggest change made to
-			// the solution vector.  If the change isn't significant, the loop
-			// stops.
-			if (count % 10 == 0) maxDelta = 0;
-
-			for (var i = 0, lenI = b.length; i < lenI; i++) {
-				var sigma = 0;
-				// Sigma += dot product of ith row of A and solution vector
-				for (var j = 1; j < 5; j++) {
-					var entryA = A.get(i, j);
-					if (entryA == -1) break;
-					sigma -= sol[entryA];
-				}
-				var delta = omega * ((b[i] - sigma) / A.get(i, 0) - sol[i])
-				sol[i] += delta;
-				if (count % 10 == 0 && delta > maxDelta) maxDelta = Math.abs(delta);
-			}
-
-			if (count % 10 == 0 && maxDelta < 10) break;
-
-			count++;
-		}
-		return sol;
 	}
 
 	function Int32Array2D(width, height) {
